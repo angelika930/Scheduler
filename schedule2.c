@@ -79,18 +79,7 @@ int rr_qlen() {
    return qlen;
 }
 
-//initialize empty queue
-void rr_init() {
-   struct scheduler rr = {NULL, NULL, rr_admit, rr_remove, rr_next, rr_qlen}; 
-   rr.qlen = rr_qlen;
-   rr.admit = rr_admit;
-   rr.remove = rr_remove;
-   rr.next = rr_next;
-   scheduler roundRobin = &rr;
-}
-
 int main() {
-   rr_init();
    thread first = malloc(sizeof(struct threadinfo_st));
    thread second = malloc(sizeof(struct threadinfo_st));
    thread third = malloc(sizeof(struct threadinfo_st));
