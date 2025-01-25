@@ -5,8 +5,14 @@
 #include <string.h> 
 #include <sys/mman.h>
 #include <sys/resource.h>
+#include <unistd.h>
 
-static tid_t next_tid = 0;
+static tid_t next_tid = 1;
+extern thread head;
+extern thread tail;
+extern int qlen;
+extern struct scheduler rr;
+scheduler roundRobin;
 
 //stack size helper
 static size_t calculate_stack_size(){
@@ -31,8 +37,12 @@ static size_t calculate_stack_size(){
 		return aligned_size;
 
 	}
+   else if (getrlimit(RLIMIT_STACK, &stack_limit) == -1) {
+      perror("getrlimit failed to return resource limits");
+      exit(1);
+   }
 	//return a default of 8 MB if all else fails
-	return 8 * 1024 * 1024
+	return 8 * 1024 * 1024;
 }
 
 //wrapper function to preserve return values 
@@ -44,6 +54,10 @@ void wrap (lwpfun f, void *arg){
 
 //make a thread and create its stack and contents
 tid_t lwp_create(lwpfun function, void *arg){
+   //create scheduler if not already made
+   if (roundRobin == NULL) {
+      roundRobin = &rr;
+   }
 	thread new_thread = (thread)malloc(sizeof(struct threadinfo_st));
 	//if creation of new thread fails
 	if (!new_thread){
@@ -55,7 +69,7 @@ tid_t lwp_create(lwpfun function, void *arg){
 	//allocate stack using nmap
 	void *stack = mmap(NULL, stack_size, PROT_READ | PROT_WRITE, MAP_PRIVATE |
 		 MAP_ANONYMOUS | MAP_STACK, -1, 0);
-	//check if mmap failed or nah
+	//check if mmap failed 
 	if (stack == MAP_FAILED){
 		perror("MMAP");
 		free(new_thread); 
@@ -63,33 +77,75 @@ tid_t lwp_create(lwpfun function, void *arg){
 	}
 	
 	//setting up the new thread's stack and context (I think?)
-	new_therad->tid = next_tid++;
+	new_thread->tid = next_tid++;
 	new_thread->stack = stack; 
 	new_thread->stacksize = stack_size;
 	//this should move the stack pointer to the right spot when rfiles loads it	
-	new_thread->state.rsp = (unsigned long) ((char*)stack + stacksize - 
+	new_thread->state.rsp = (unsigned long) ((char*)stack + stack_size - 
 		sizeof(void*));
 	//move base pointer to stack pointer
-	new_thread->state.rbp = new_thread->state.rsp
+	new_thread->state.rbp = new_thread->state.rsp;
 	//load function into rdi 
 	new_thread->state.rdi = (unsigned long)function; 
 	//load arg for function into rsi 
 	new_thread->state.rsi = (unsigned long)arg; 
 	//load address to wrapper into rip
-	//I feel like this is wrong and that it needs to have args passed to it
-	//explicitly but I'm not sure cuz in class he just said pointer to 
-	//the wrapper function so idk if the name is good enough and bleh
-	new_thread->state.rip = (unsigned long)wrap; 
-	
+	new_thread->state.rip = (unsigned long)wrap(function, arg); //call like this??
+	//Zero out all the registers
+	new_thread->state.rax = 0;
+	new_thread->state.rbx = 0;
+	new_thread->state.rcx = 0;
+	new_thread->state.rdx = 0;
+	new_thread->state.r8 = 0;
+	new_thread->state.r9 = 0;
+	new_thread->state.r10 = 0;
+	new_thread->state.r11 = 0;
+	new_thread->state.r12 = 0;
+	new_thread->state.r13 = 0;
+	new_thread->state.r14 = 0;
+	new_thread->state.r15 = 0;
+   
 	scheduler current_sched = lwp_get_scheduler(); 
-	if (current_sched && current_sched->admit){
-		current_sched->admit(new_thread); 
+	if (current_sched && current_sched->roundRobin->rr_admit){
+		current_sched->rr_admit(new_thread); 
 	}
 	
 	return new_thread->tid; 
 }
 
-//void lwp_start(void){}
+void lwp_start(void) {
+   thread new_thread = (thread) malloc(sizeof(struct threadinfo_st));
+   if (!new_thread) {
+      return NO_THREAD;
+   }
+   new_thread = next_tid++;
+   
+	//Zero out all the registers
+	new_thread->state.rax = 0;
+	new_thread->state.rbx = 0;
+	new_thread->state.rcx = 0;
+	new_thread->state.rdx = 0;
+	new_thread->state.r8 = 0;
+	new_thread->state.r9 = 0;
+	new_thread->state.r10 = 0;
+	new_thread->state.r11 = 0;
+	new_thread->state.r12 = 0;
+	new_thread->state.r13 = 0;
+	new_thread->state.r14 = 0;
+	new_thread->state.r15 = 0;
+   
+	//move base pointer to stack pointer
+	new_thread->state.rbp = new_thread->state.rsp;
+	//load function into rdi 
+	new_thread->state.rdi = (unsigned long)function; 
+	//load arg for function into rsi 
+	new_thread->state.rsi = (unsigned long)arg; 
+	//load address to wrapper into rip
+	new_thread->state.rip = (unsigned long)wrap(function, arg); //call like this??
+
+   lwp_yield();
+
+}
 
 //void lwp_yield(void){}
 

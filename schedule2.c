@@ -5,7 +5,6 @@
 static thread head = NULL;
 static thread tail = NULL;
 int qlen = 0;
-scheduler roundRobin;
 
 //admits new thread to scheduler
 void rr_admit(thread new) {
@@ -79,23 +78,5 @@ int rr_qlen() {
    return qlen;
 }
 
-int main() {
-   thread first = malloc(sizeof(struct threadinfo_st));
-   thread second = malloc(sizeof(struct threadinfo_st));
-   thread third = malloc(sizeof(struct threadinfo_st));
-if (first == NULL) {
-    // Handle malloc failure (e.g., print an error and exit)
-    perror("Failed to allocate memory for thread");
-    exit(1);
-    }
-    //
-   rr_admit(first);
-   rr_admit(second);
-   rr_admit(third);
-   rr_next();
-   rr_remove(first);
-   rr_remove(third);
-   free(first);
-   free(second);
-   free(third);
-}
+//define our roundRobin scheduler
+struct scheduler rr = {NULL, NULL, rr_admit, rr_remove, rr_next, rr_qlen};
