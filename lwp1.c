@@ -3,8 +3,90 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> 
+#include <sys/mman.h>
+#include <sys/resource.h>
 
+static tid_t next_tid = 0;
+
+//stack size helper
+static size_t calculate_stack_size(){
+	long page_size = sysconf(_SC_PAGE_SIZE);
+	if (page_size <= 0){
+		//this was the reccomended default I saw somwhere for page size
+		page_size = 4096; 
+	}
+	struct rlimit stack_limit; 
+	if (getrlimit(RLIMIT_STACK, &stack_limit) == 0){
+		size_t stack_size;
+		//default to 8 MB if there's no limit
+		if (stack_limit.rlim_cur == RLIM_INFINITY) {
+    			stack_size = 8 * 1024 * 1024; 
+		} 
+		//otherwise use the provided stack size limit
+		else {
+			stack_size = stack_limit.rlim_cur;
+		}
+		
+		size_t aligned_size = ((stack_size + page_size - 1) / page_size) * page_size; 
+		return aligned_size;
+
+	}
+	//return a default of 8 MB if all else fails
+	return 8 * 1024 * 1024
+}
+
+//wrapper function to preserve return values 
+void wrap (lwpfun f, void *arg){
+	int ret; 
+	ret = f(arg); 
+	lwp_exit(ret);
+}
+
+//make a thread and create its stack and contents
 tid_t lwp_create(lwpfun function, void *arg){
+	thread new_thread = (thread)malloc(sizeof(struct threadinfo_st));
+	//if creation of new thread fails
+	if (!new_thread){
+		return NO_THREAD;	
+	}
+	
+	size_t stack_size = calculate_stack_size(); 
+	
+	//allocate stack using nmap
+	void *stack = mmap(NULL, stack_size, PROT_READ | PROT_WRITE, MAP_PRIVATE |
+		 MAP_ANONYMOUS | MAP_STACK, -1, 0);
+	//check if mmap failed or nah
+	if (stack == MAP_FAILED){
+		perror("MMAP");
+		free(new_thread); 
+		exit(EXIT_FAILURE);
+	}
+	
+	//setting up the new thread's stack and context (I think?)
+	new_therad->tid = next_tid++;
+	new_thread->stack = stack; 
+	new_thread->stacksize = stack_size;
+	//this should move the stack pointer to the right spot when rfiles loads it	
+	new_thread->state.rsp = (unsigned long) ((char*)stack + stacksize - 
+		sizeof(void*));
+	//move base pointer to stack pointer
+	new_thread->state.rbp = new_thread->state.rsp
+	//load function into rdi 
+	new_thread->state.rdi = (unsigned long)function; 
+	//load arg for function into rsi 
+	new_thread->state.rsi = (unsigned long)arg; 
+	//load address to wrapper into rip
+	//I feel like this is wrong and that it needs to have args passed to it
+	//explicitly but I'm not sure cuz in class he just said pointer to 
+	//the wrapper function so idk if the name is good enough and bleh
+	new_thread->state.rip = (unsigned long)wrap; 
+	
+	scheduler current_sched = lwp_get_scheduler(); 
+	if (current_sched && current_sched->admit){
+		current_sched->admit(new_thread); 
+	}
+	
+	return new_thread->tid; 
 }
 
 //void lwp_start(void){}
