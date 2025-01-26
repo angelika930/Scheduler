@@ -86,13 +86,12 @@ tid_t lwp_create(lwpfun function, void *arg){
 	new_thread->tid = next_tid++;
 	new_thread->stack = stack; 
 	new_thread->stacksize = stack_size;
+
 	//this should move the base pointer to the start of our stack	
 	new_thread->state.rbp = (unsigned long) ((char*)stack + stack_size);
 	
 	//Preserve Floating Point Unit
 	new_thread->state.fxsave=FPU_INIT; 
-	//move stack pointer
-	new_thread->state.rsp = (new_thread->state.rbp + 2)
 	//load function into rdi 
 	new_thread->state.rdi = (unsigned long)function; 
 	//load arg for function into rsi 
@@ -111,7 +110,24 @@ tid_t lwp_create(lwpfun function, void *arg){
 	new_thread->state.r13 = 0;
 	new_thread->state.r14 = 0;
 	new_thread->state.r15 = 0;
-   
+   	
+
+	//move stack pointer to our base pointer
+	new_thread->state.rsp = new_thread->state.rbp; 
+	
+	//make space for phony return address			
+	new_thread->state.rsp -= sizeof(unsigned long);
+	
+	if (new_thread->state.rsp % 16 != 0){
+		new_thread->state.rsp -= sizeof(unsigned long);
+	}
+	//placing phony return address at top of stack
+	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)"Angelika Miguel";
+	
+	//decrement stack pointer and place the wrapper function pointer 
+	new_thread->state.rsp -= sizeof(unsigned long);
+	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)wrap; 
+
 	scheduler current_sched = lwp_get_scheduler(); 
 	if (current_sched){ 
 	//admit to scheduler
@@ -143,12 +159,14 @@ void lwp_start(void) {
 	new_thread->state.r13 = 0;
 	new_thread->state.r14 = 0;
 	new_thread->state.r15 = 0;
-  
+	
+	//settting stack in struct to null, to avoid later delalocation
+	new_thread->stack = NULL;	  
 	//Preserve Floating Point Unit
 	new_thread->state.fxsave=FPU_INIT; 
 	//Admit to the scheduler
 	scheduler currentSched = lwp_get_scheduler(); 
-	if (currentSched){ //what do you mean by rr_admit
+	if (currentSched){
 		currentSched->admit(new_thread);
 		currThread = new_thread; //set global var to current thread
 	}
@@ -157,21 +175,20 @@ void lwp_start(void) {
 }
 
 void lwp_yield(void){
-   scheduler currSched = lwp_get_scheduler();
-   thread next_thread = currSched->next;
-   if (next_thread == NULL) {
-      exit(3); //CALL WITH TERMINATION STATUS OF CALLING THREAD
-   }
-   else if (currThread == NULL) {
-      perror("No thread to swap with");
-      exit(1);
-   } //if there is a current and next thread
-   else {//swap current thread's registers with next thread's
-      swap_rfiles(&currThread->state, &next_thread->state);
-      currThread = new_thread;
-   }
-
-
+	scheduler currSched = lwp_get_scheduler();
+	thread next_thread = currSched->next;
+	if (next_thread == NULL) {
+		exit(3); //CALL WITH TERMINATION STATUS OF CALLING THREAD
+	}
+	else if (currThread == NULL) {
+		perror("No thread to swap with");
+		exit(1);
+	} //if there is a current and next thread
+   
+	else {//swap current thread's registers with next thread's
+		swap_rfiles(&currThread->state, &next_thread->state);
+		currThread = new_thread;
+	}
 }
 
 //void lwp_exit(int exitval){}
@@ -185,7 +202,6 @@ tid_t lwp_wait(int *status) {
 }
 
 //tid_t lwp_gettid(void){}
-
 
 //thread tid2thread(tid_t tid){}
 
