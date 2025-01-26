@@ -84,7 +84,7 @@ tid_t lwp_create(lwpfun function, void *arg){
 	//Preserve Floating Point Unit
 	new_thread->state.fxsave=FPU_INIT; 
 	//move stack pointer
-	new_thread->state.rsp = (new_thread->state.rbp + 2)
+	new_thread->state.rsp = (new_thread->state.rbp - 2)
 	//load function into rdi 
 	new_thread->state.rdi = (unsigned long)function; 
 	//load arg for function into rsi 
