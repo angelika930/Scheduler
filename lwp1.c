@@ -1,5 +1,6 @@
 #include "scheduler.h"
 #include "lwp.h"
+#include "magic64.S"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> 
@@ -11,8 +12,9 @@ static tid_t next_tid = 1;
 extern thread head;
 extern thread tail;
 extern int qlen;
-extern struct scheduler rr;
-scheduler roundRobin;
+extern struct scheduler roundRobin;
+thread currThread;
+
 
 //stack size helper
 static size_t calculate_stack_size(){
@@ -54,10 +56,6 @@ void wrap (lwpfun f, void *arg){
 
 //make a thread and create its stack and contents
 tid_t lwp_create(lwpfun function, void *arg){
-   //create scheduler if not already made
-   if (roundRobin == NULL) {
-      roundRobin = &rr;
-   }
 	thread new_thread = (thread)malloc(sizeof(struct threadinfo_st));
 	//if creation of new thread fails
 	if (!new_thread){
@@ -83,6 +81,8 @@ tid_t lwp_create(lwpfun function, void *arg){
 	//this should move the stack pointer to the right spot when rfiles loads it	
 	new_thread->state.rsp = (unsigned long) ((char*)stack + stack_size - 
 		sizeof(void*));
+   //Preserve Floating Point Unit
+   new_thread->state.fxsave=FPU_INIT; 
 	//move base pointer to stack pointer
 	new_thread->state.rbp = new_thread->state.rsp;
 	//load function into rdi 
@@ -90,7 +90,7 @@ tid_t lwp_create(lwpfun function, void *arg){
 	//load arg for function into rsi 
 	new_thread->state.rsi = (unsigned long)arg; 
 	//load address to wrapper into rip
-	new_thread->state.rip = (unsigned long)wrap(function, arg); //call like this??
+	new_thread->state.rip = (unsigned long)wrap; //call like this??
 	//Zero out all the registers
 	new_thread->state.rax = 0;
 	new_thread->state.rbx = 0;
@@ -106,8 +106,11 @@ tid_t lwp_create(lwpfun function, void *arg){
 	new_thread->state.r15 = 0;
    
 	scheduler current_sched = lwp_get_scheduler(); 
-	if (current_sched && current_sched->roundRobin->rr_admit){
-		current_sched->rr_admit(new_thread); 
+	if (current_sched){ 
+      //admit to scheduler
+		current_sched->admit(new_thread);
+      //keep track of what the current thread is
+      currThread = new_thread; 
 	}
 	
 	return new_thread->tid; 
@@ -116,9 +119,10 @@ tid_t lwp_create(lwpfun function, void *arg){
 void lwp_start(void) {
    thread new_thread = (thread) malloc(sizeof(struct threadinfo_st));
    if (!new_thread) {
-      return NO_THREAD;
+      perror("Malloc failed in lwp_start");
+      return;
    }
-   new_thread = next_tid++;
+   new_thread->tid = next_tid++;
    
 	//Zero out all the registers
 	new_thread->state.rax = 0;
@@ -133,21 +137,36 @@ void lwp_start(void) {
 	new_thread->state.r13 = 0;
 	new_thread->state.r14 = 0;
 	new_thread->state.r15 = 0;
-   
-	//move base pointer to stack pointer
-	new_thread->state.rbp = new_thread->state.rsp;
-	//load function into rdi 
-	new_thread->state.rdi = (unsigned long)function; 
-	//load arg for function into rsi 
-	new_thread->state.rsi = (unsigned long)arg; 
-	//load address to wrapper into rip
-	new_thread->state.rip = (unsigned long)wrap(function, arg); //call like this??
-
+  
+   //Preserve Floating Point Unit
+   new_thread->state.fxsave=FPU_INIT; 
+   //Admit to the scheduler
+	scheduler currentSched = lwp_get_scheduler(); 
+	if (currentSched){ //what do you mean by rr_admit
+		currentSched->admit(new_thread);
+      currThread = new_thread; //set global var to current thread
+	}
    lwp_yield();
 
 }
 
-//void lwp_yield(void){}
+void lwp_yield(void){
+   scheduler currSched = lwp_get_scheduler();
+   thread next_thread = currSched->next;
+   if (next_thread == NULL) {
+      exit(3); //CALL WITH TERMINATION STATUS OF CALLING THREAD
+   }
+   else if (currThread == NULL) {
+      perror("No thread to swap with");
+      exit(1);
+   } //if there is a current and next thread
+   else {//swap current thread's registers with next thread's
+      swap_rfiles(&currThread->state, &next_thread->state);
+      currThread = new_thread;
+   }
+
+
+}
 
 //void lwp_exit(int exitval){}
 
@@ -160,4 +179,8 @@ void lwp_start(void) {
 
 //void lwp_set_scheduler(scheduler sched){}
 
-//scheduler lwp_get_scheduler(void){}
+//return current value of global roundRobin scheduler
+scheduler lwp_get_scheduler(void){
+   return roundRobin;
+
+}

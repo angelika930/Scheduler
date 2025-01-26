@@ -80,3 +80,4 @@ int rr_qlen() {
 
 //define our roundRobin scheduler
 struct scheduler rr = {NULL, NULL, rr_admit, rr_remove, rr_next, rr_qlen};
+scheduler roundRobin = &rr;
