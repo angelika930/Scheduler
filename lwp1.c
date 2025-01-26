@@ -1,6 +1,6 @@
 #include "scheduler.h"
 #include "lwp.h"
-#include "magic64.S"
+//#include "magic64.S"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> 
@@ -12,7 +12,7 @@ static tid_t next_tid = 1;
 extern thread head;
 extern thread tail;
 extern int qlen;
-extern struct scheduler roundRobin;
+extern scheduler roundRobin;
 thread currThread;
 
 struct threadQ {
@@ -173,10 +173,10 @@ void lwp_start(void) {
 	lwp_yield();
 
 }
-
+/*
 void lwp_yield(void){
-	scheduler currSched = lwp_get_scheduler();
-	thread next_thread = currSched->next;
+	//scheduler currSched = lwp_get_scheduler();
+	//thread next_thread = currSched->next;
 	if (next_thread == NULL) {
 		exit(3); //CALL WITH TERMINATION STATUS OF CALLING THREAD
 	}
@@ -186,7 +186,7 @@ void lwp_yield(void){
 	} //if there is a current and next thread
    
 	else {//swap current thread's registers with next thread's
-		swap_rfiles(&currThread->state, &next_thread->state);
+//		swap_rfiles(&currThread->state, &next_thread->state);
 		currThread = new_thread;
 	}
 }
@@ -200,7 +200,7 @@ tid_t lwp_wait(int *status) {
    } 
 
 }
-
+*/
 //tid_t lwp_gettid(void){}
 
 //thread tid2thread(tid_t tid){}
