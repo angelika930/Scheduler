@@ -78,19 +78,18 @@ tid_t lwp_create(lwpfun function, void *arg){
 	new_thread->tid = next_tid++;
 	new_thread->stack = stack; 
 	new_thread->stacksize = stack_size;
-	//this should move the stack pointer to the right spot when rfiles loads it	
-	new_thread->state.rsp = (unsigned long) ((char*)stack + stack_size - 
-		sizeof(void*));
-   //Preserve Floating Point Unit
-   new_thread->state.fxsave=FPU_INIT; 
-	//move base pointer to stack pointer
-	new_thread->state.rbp = new_thread->state.rsp;
+	//this should move the base pointer to the start of our stack	
+	new_thread->state.rbp = (unsigned long) ((char*)stack + stack_size);
+	
+	//Preserve Floating Point Unit
+	new_thread->state.fxsave=FPU_INIT; 
+	//move stack pointer
+	new_thread->state.rsp = (new_thread->state.rbp + 2)
 	//load function into rdi 
 	new_thread->state.rdi = (unsigned long)function; 
 	//load arg for function into rsi 
 	new_thread->state.rsi = (unsigned long)arg; 
-	//load address to wrapper into rip
-	new_thread->state.rip = (unsigned long)wrap; //call like this??
+
 	//Zero out all the registers
 	new_thread->state.rax = 0;
 	new_thread->state.rbx = 0;
@@ -107,22 +106,21 @@ tid_t lwp_create(lwpfun function, void *arg){
    
 	scheduler current_sched = lwp_get_scheduler(); 
 	if (current_sched){ 
-      //admit to scheduler
-		current_sched->admit(new_thread);
-      //keep track of what the current thread is
-      currThread = new_thread; 
+	//admit to scheduler
+	current_sched->admit(new_thread);
+	//keep track of what the current thread is
+	currThread = new_thread; 
 	}
-	
 	return new_thread->tid; 
 }
 
 void lwp_start(void) {
-   thread new_thread = (thread) malloc(sizeof(struct threadinfo_st));
-   if (!new_thread) {
-      perror("Malloc failed in lwp_start");
-      return;
-   }
-   new_thread->tid = next_tid++;
+	thread new_thread = (thread) malloc(sizeof(struct threadinfo_st));
+	if (!new_thread) {
+		perror("Malloc failed in lwp_start");
+		return;
+	}
+	new_thread->tid = next_tid++;
    
 	//Zero out all the registers
 	new_thread->state.rax = 0;
@@ -138,15 +136,15 @@ void lwp_start(void) {
 	new_thread->state.r14 = 0;
 	new_thread->state.r15 = 0;
   
-   //Preserve Floating Point Unit
-   new_thread->state.fxsave=FPU_INIT; 
-   //Admit to the scheduler
+	//Preserve Floating Point Unit
+	new_thread->state.fxsave=FPU_INIT; 
+	//Admit to the scheduler
 	scheduler currentSched = lwp_get_scheduler(); 
 	if (currentSched){ //what do you mean by rr_admit
 		currentSched->admit(new_thread);
-      currThread = new_thread; //set global var to current thread
+		currThread = new_thread; //set global var to current thread
 	}
-   lwp_yield();
+	lwp_yield();
 
 }
 
