@@ -1,6 +1,6 @@
 #include "scheduler.h"
 #include "lwp.h"
-#include "magic64.S"
+//#include "magic64.S"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> 
@@ -166,6 +166,7 @@ void lwp_start(void) {
 
 }
 
+/*
 void lwp_yield(void){
 	scheduler currSched = lwp_get_scheduler();
 	thread next_thread = currSched->next;
@@ -192,9 +193,10 @@ void lwp_yield(void){
 //thread tid2thread(tid_t tid){}
 
 //void lwp_set_scheduler(scheduler sched){}
-
+*/
 //return current value of global roundRobin scheduler
 scheduler lwp_get_scheduler(void){
    return roundRobin;
 
 }
+
