@@ -12,8 +12,16 @@ static tid_t next_tid = 1;
 extern thread head;
 extern thread tail;
 extern int qlen;
-extern struct scheduler roundRobin;
+extern scheduler roundRobin;
 thread currThread;
+
+struct threadQ {
+   thread currThread;
+   thread next;
+};
+
+struct threadQ *waitingThread;
+struct threadQ *terminatedThread;
 
 
 //stack size helper
@@ -165,11 +173,14 @@ void lwp_start(void) {
 	lwp_yield();
 
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> c9ca38bed4f53cde861007c656c1d52054a8bfb3
 /*
 void lwp_yield(void){
-	scheduler currSched = lwp_get_scheduler();
-	thread next_thread = currSched->next;
+	//scheduler currSched = lwp_get_scheduler();
+	//thread next_thread = currSched->next;
 	if (next_thread == NULL) {
 		exit(3); //CALL WITH TERMINATION STATUS OF CALLING THREAD
 	}
@@ -179,15 +190,21 @@ void lwp_yield(void){
 	} //if there is a current and next thread
    
 	else {//swap current thread's registers with next thread's
-		swap_rfiles(&currThread->state, &next_thread->state);
+//		swap_rfiles(&currThread->state, &next_thread->state);
 		currThread = new_thread;
 	}
 }
 
 //void lwp_exit(int exitval){}
 
-//tid_t lwp_wait(int *status){}
+tid_t lwp_wait(int *status) {
+   if (terminatedThread == NULL) {
+      
 
+   } 
+
+}
+*/
 //tid_t lwp_gettid(void){}
 
 //thread tid2thread(tid_t tid){}
