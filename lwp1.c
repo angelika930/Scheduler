@@ -174,10 +174,12 @@ void lwp_start(void) {
 
 }
 
-/*
+
 void lwp_yield(void){
-	//scheduler currSched = lwp_get_scheduler();
-	//thread next_thread = currSched->next;
+	scheduler currSched = lwp_get_scheduler();
+     //DO CHECK IF NULL
+	thread next_thread = currSched->next;
+   thread old_thread = currThread; 
 	if (next_thread == NULL) {
 		exit(3); //CALL WITH TERMINATION STATUS OF CALLING THREAD
 	}
@@ -187,11 +189,13 @@ void lwp_yield(void){
 	} //if there is a current and next thread
    
 	else {//swap current thread's registers with next thread's
-//		swap_rfiles(&currThread->state, &next_thread->state);
+		swap_rfiles(&old_thread->state, &next_thread->state);
 		currThread = new_thread;
+      //go to back of scheduler, enables round robin
+      currSched->admit(old_thread);
 	}
 }
-*/
+
 //void lwp_exit(int exitval){}
 
 tid_t lwp_wait(int *status) {
@@ -220,8 +224,22 @@ tid_t lwp_wait(int *status) {
 
 //thread tid2thread(tid_t tid){}
 
-//void lwp_set_scheduler(scheduler sched){}
-
+void lwp_set_scheduler(scheduler sched) {
+   //1). Initialize a new scheduler
+   sched = malloc(sizeof(struct scheduler));
+   if (sched == NULL) {
+      perror("Malloc failed when setting scheduler");
+      exit(1);
+   }
+   sched = {NULL, NULL, rr_admit, rr_remove, rr_next, rr_qlen};      
+   //2). transfer threads from one scheduler to the next
+   thread temp;
+   while (temp = roundRobin->next != NULL) {
+      sched->admit(temp);//admit to new scheduler
+   }
+   //Reassign global scheduler
+   roundRobin = sched;
+}
 //return current value of global roundRobin scheduler
 scheduler lwp_get_scheduler(void){
    return roundRobin;
