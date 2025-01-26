@@ -15,6 +15,14 @@ extern int qlen;
 extern struct scheduler roundRobin;
 thread currThread;
 
+struct threadQ {
+   thread currThread;
+   thread next;
+};
+
+struct threadQ *waitingThread;
+struct threadQ *terminatedThread;
+
 
 //stack size helper
 static size_t calculate_stack_size(){
@@ -168,7 +176,13 @@ void lwp_yield(void){
 
 //void lwp_exit(int exitval){}
 
-//tid_t lwp_wait(int *status){}
+tid_t lwp_wait(int *status) {
+   if (terminatedThread == NULL) {
+      
+
+   } 
+
+}
 
 //tid_t lwp_gettid(void){}
 
