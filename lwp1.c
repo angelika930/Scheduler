@@ -78,13 +78,12 @@ tid_t lwp_create(lwpfun function, void *arg){
 	new_thread->tid = next_tid++;
 	new_thread->stack = stack; 
 	new_thread->stacksize = stack_size;
+
 	//this should move the base pointer to the start of our stack	
 	new_thread->state.rbp = (unsigned long) ((char*)stack + stack_size);
 	
 	//Preserve Floating Point Unit
 	new_thread->state.fxsave=FPU_INIT; 
-	//move stack pointer
-	new_thread->state.rsp = (new_thread->state.rbp - 2)
 	//load function into rdi 
 	new_thread->state.rdi = (unsigned long)function; 
 	//load arg for function into rsi 
@@ -103,7 +102,24 @@ tid_t lwp_create(lwpfun function, void *arg){
 	new_thread->state.r13 = 0;
 	new_thread->state.r14 = 0;
 	new_thread->state.r15 = 0;
-   
+   	
+
+	//move stack pointer to our base pointer
+	new_thread->state.rsp = new_thread->state.rbp; 
+	
+	//make space for phony return address			
+	new_thread->state.rsp -= sizeof(unsigned long);
+	
+	if (new_thread->state.rsp % 16 != 0){
+		new_thread->state.rsp -= sizeof(unsigned long);
+	}
+	//placing phony return address at top of stack
+	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)"Angelika Miguel";
+	
+	//decrement stack pointer and place the wrapper function pointer 
+	new_thread->state.rsp -= sizeof(unsigned long);
+	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)wrap; 
+
 	scheduler current_sched = lwp_get_scheduler(); 
 	if (current_sched){ 
 	//admit to scheduler
