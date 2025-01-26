@@ -190,7 +190,7 @@ void lwp_yield(void){
 		currThread = new_thread;
 	}
 }
-*/
+
 //void lwp_exit(int exitval){}
 
 tid_t lwp_wait(int *status) {
@@ -200,7 +200,7 @@ tid_t lwp_wait(int *status) {
    } 
 
 }
-
+*/
 //tid_t lwp_gettid(void){}
 
 //thread tid2thread(tid_t tid){}
