@@ -173,6 +173,7 @@ void lwp_start(void) {
 	lwp_yield();
 
 }
+
 /*
 void lwp_yield(void){
 	//scheduler currSched = lwp_get_scheduler();
@@ -220,9 +221,10 @@ tid_t lwp_wait(int *status) {
 //thread tid2thread(tid_t tid){}
 
 //void lwp_set_scheduler(scheduler sched){}
-
+*/
 //return current value of global roundRobin scheduler
 scheduler lwp_get_scheduler(void){
    return roundRobin;
 
 }
+
