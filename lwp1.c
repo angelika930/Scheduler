@@ -207,7 +207,7 @@ tid_t lwp_wait(int *status) {
 //thread tid2thread(tid_t tid){}
 
 //void lwp_set_scheduler(scheduler sched){}
-*/
+
 //return current value of global roundRobin scheduler
 scheduler lwp_get_scheduler(void){
    return roundRobin;
