@@ -173,10 +173,7 @@ void lwp_start(void) {
 	lwp_yield();
 
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> c9ca38bed4f53cde861007c656c1d52054a8bfb3
 /*
 void lwp_yield(void){
 	//scheduler currSched = lwp_get_scheduler();
