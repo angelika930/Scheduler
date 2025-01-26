@@ -151,21 +151,20 @@ void lwp_start(void) {
 }
 
 void lwp_yield(void){
-   scheduler currSched = lwp_get_scheduler();
-   thread next_thread = currSched->next;
-   if (next_thread == NULL) {
-      exit(3); //CALL WITH TERMINATION STATUS OF CALLING THREAD
-   }
-   else if (currThread == NULL) {
-      perror("No thread to swap with");
-      exit(1);
-   } //if there is a current and next thread
-   else {//swap current thread's registers with next thread's
-      swap_rfiles(&currThread->state, &next_thread->state);
-      currThread = new_thread;
-   }
-
-
+	scheduler currSched = lwp_get_scheduler();
+	thread next_thread = currSched->next;
+	if (next_thread == NULL) {
+		exit(3); //CALL WITH TERMINATION STATUS OF CALLING THREAD
+	}
+	else if (currThread == NULL) {
+		perror("No thread to swap with");
+		exit(1);
+	} //if there is a current and next thread
+   
+	else {//swap current thread's registers with next thread's
+		swap_rfiles(&currThread->state, &next_thread->state);
+		currThread = new_thread;
+	}
 }
 
 //void lwp_exit(int exitval){}
@@ -173,7 +172,6 @@ void lwp_yield(void){
 //tid_t lwp_wait(int *status){}
 
 //tid_t lwp_gettid(void){}
-
 
 //thread tid2thread(tid_t tid){}
 
