@@ -90,7 +90,8 @@ tid_t lwp_create(lwpfun function, void *arg){
 	new_thread->stacksize = stack_size;
 
 	//this should move the base pointer to the start of our (new) stack
-	new_thread->state.rbp = (unsigned long) ((char*)stack + stack_size);
+	//using pointer arithmetic
+	new_thread->state.rbp = (stack + stack_size - 1);
 	
 	//Preserve Floating Point Unit
 	new_thread->state.fxsave=FPU_INIT; 
@@ -119,10 +120,10 @@ tid_t lwp_create(lwpfun function, void *arg){
 
 	//ensre that stack frame is 16 byte aligned
 	while (new_thread->state.rsp % 16 != 0){
-		new_thread->state.rsp -= sizeof(unsigned long);
+		new_thread->state.rsp -= 1;
 	}
 	//make space for phony return address			
-	new_thread->state.rsp -= sizeof(unsigned long);
+	new_thread->state.rsp -= 1;
 	
   	/*
    	//original placement of this alignment, not sure 
