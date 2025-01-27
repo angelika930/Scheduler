@@ -180,7 +180,11 @@ tid_t lwp_create(lwpfun function, void *arg){
 	if (current_sched){ 
 		//admit to scheduler is segfaulting
 		//admit to scheduler
+		if (current_sched->admit == NULL){
+			fprintf(stdout, "Hey it's me admit I'm null\n");
+		}
 		current_sched->admit(new_thread);
+		//fprintf(stdout, "Look I got back from admit\n");
 		//keep track of what the current thread is
 		currThread = new_thread; 
 		
