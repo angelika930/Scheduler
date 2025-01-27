@@ -256,6 +256,9 @@ void lwp_exit(int exitval) {
 
 //lwp_wait needs some help, I'm not sure we understand what it does or what it
 //is supposed to return, etc. 
+
+//like this function should be unmapping our "stack" and then freeing our 
+//malloc'd thread pointer and such as well 
 tid_t lwp_wait(int *status) {
    if (qlen <= 1) {
       return NO_THREAD;
