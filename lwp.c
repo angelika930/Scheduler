@@ -90,8 +90,56 @@ tid_t lwp_create(lwpfun function, void *arg){
 	new_thread->stacksize = stack_size;
 
 	//this should move the base pointer to the start of our (new) stack
-	new_thread->state.rbp = (unsigned long) ((char*)stack + stack_size);
+	//using pointer arithmetic
+	new_thread->state.rbp = (unsigned long)(stack + stack_size);
 	
+	//move "into" the new stack space 
+	new_thread->state.rbp -= 1; 
+
+	//clear the last 4 bits for 16-byte alignment
+	new_thread->state.rbp &= ~0xF;
+	
+	//move stack pointer to our base pointer
+	new_thread->state.rsp = new_thread->state.rbp; 
+	
+	//required for 16 byte alignment of stack pointer
+	//each unsigned long is 8 bytes 
+	new_thread->state.rsp -= sizeof(unsigned long);
+
+	//make space for phony return address			
+	new_thread->state.rsp -= sizeof(unsigned long);
+
+	//placing phony return address at top of stack
+	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)lwp_exit;
+
+	//decrement stack pointer for space for wrapper function pointer  
+	new_thread->state.rsp -= sizeof(unsigned long);
+
+	//place the wrapper function pointer on stack
+	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)wrap;
+
+	//decrement stack pointer to place phony base pointer on it
+	new_thread->state.rsp -= sizeof(unsigned long);
+
+	//place phony base pointer on stack
+	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)wrap; 
+
+  	if (new_thread->state.rsp % 16 != 0){
+		fprintf(stderr, "%d\n", sizeof(unsigned long));
+		fprintf(stderr, "%d\n", (new_thread->state.rsp % 16));
+		fprintf(stderr, "Error: rsp is not 16-byte aligned!\n");
+		exit(EXIT_FAILURE);
+	}
+	/*
+   	//original placement of this alignment, not sure 
+ 	//we need it here, I think it's only neccessary once we've put 
+ 	//everything we are going to use on the stack 
+	//ensure that stack frame is 16 byte aligned
+	if (new_thread->state.rsp % 16 != 0){
+		new_thread->state.rsp -= sizeof(unsigned long);
+	}
+	*/
+
 	//Preserve Floating Point Unit
 	new_thread->state.fxsave=FPU_INIT; 
 	//load function into rdi 
@@ -99,7 +147,7 @@ tid_t lwp_create(lwpfun function, void *arg){
 	//load arg for function into rsi 
 	new_thread->state.rsi = (unsigned long)arg; 
 
-	//Zero out all the remaining registers
+	//zero out all the registers not in use for our implementation
 	new_thread->state.rax = 0;
 	new_thread->state.rbx = 0;
 	new_thread->state.rcx = 0;
@@ -114,41 +162,7 @@ tid_t lwp_create(lwpfun function, void *arg){
 	new_thread->state.r15 = 0;
    	
 
-	//move stack pointer to our base pointer
-	new_thread->state.rsp = new_thread->state.rbp; 
-
-	//ensre that stack frame is 16 byte aligned
-	while (new_thread->state.rsp % 16 != 0){
-		new_thread->state.rsp -= sizeof(unsigned long);
-	}
-	//make space for phony return address			
-	new_thread->state.rsp -= sizeof(unsigned long);
 	
-  	/*
-   	//original placement of this alignment, not sure 
- 	//we need it here, I think it's only neccessary once we've put 
- 	//everything we are going to use on the stack 
-	//ensure that stack frame is 16 byte aligned
-	if (new_thread->state.rsp % 16 != 0){
-		new_thread->state.rsp -= sizeof(unsigned long);
-	}
-	*/
-
-	//placing phony return address at top of stack
-	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)lwp_exit;
-	
-	//decrement stack pointer and place the wrapper function pointer 
-	new_thread->state.rsp -= sizeof(unsigned long);
-	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)wrap; 
-	
-	/*
- * 	//I think this was causing an issue becaue it's at the end so it might 
- *	//not point to the right stuff
-	//ensure that stack frame is 16 byte aligned 
-	if (new_thread->state.rsp % 16 != 0){
-		new_thread->state.rsp -= sizeof(unsigned long); 
-	}
-	*/
 	//add thread to global list of threads 
 	if(!fullList){
 		fullList = new_thread;
@@ -164,11 +178,14 @@ tid_t lwp_create(lwpfun function, void *arg){
 
 	scheduler current_sched = lwp_get_scheduler(); 
 	if (current_sched){ 
+		//admit to scheduler is segfaulting
 		//admit to scheduler
 		current_sched->admit(new_thread);
 		//keep track of what the current thread is
 		currThread = new_thread; 
+		
 	}
+
 	return new_thread->tid; 
 }
 
