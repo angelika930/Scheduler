@@ -7,7 +7,7 @@
 #include <sys/mman.h>
 #include <sys/resource.h>
 #include <unistd.h>
-
+#define BITMASK 0xFF
 static tid_t next_tid = 1;
 extern thread head;
 extern thread tail;
@@ -196,7 +196,35 @@ void lwp_yield(void){
 	}
 }
 
-//void lwp_exit(int exitval){}
+void lwp_exit(int exitval) {
+   //retrieve lower 8 bits
+   int lower_bits = (unsigned int) exitval & BITMASK;
+   currThread->status = lower_bits;
+   //Place into terminated thread queue if no
+   //threads are waiting
+   if (waitingThread == NULL) {
+      
+      roundRobin->remove(currThread); 
+      struct threadQ *threadStruct = malloc(sizeof(struct threadQ));
+      threadStruct->myThread = currThread;
+      threadStruct->next = NULL;
+      //place into queue of thread waiting         
+      if (terminatedThread == NULL) {
+         terminatedThread = threadStruct;
+      }
+      else {
+         struct threadQ *temp = terminatedThread;
+         while (temp->next != NULL) {
+            temp = temp->next;
+         }  
+         temp->next = threadStruct;
+      }
+   } 
+   //ELSE GET FROM WAITING QUEUE
+
+   lwp_yield();
+
+}
 
 tid_t lwp_wait(int *status) {
    if (terminatedThread == NULL) {
