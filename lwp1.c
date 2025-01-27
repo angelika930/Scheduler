@@ -14,6 +14,7 @@ extern thread tail;
 extern int qlen;
 extern scheduler roundRobin;
 thread currThread;
+thread fullList = NULL;
 
 struct threadQ {
    thread myThread;
@@ -64,7 +65,7 @@ void wrap (lwpfun f, void *arg){
 
 //make a thread and create its stack and contents
 tid_t lwp_create(lwpfun function, void *arg){
-	thread new_thread = (thread)malloc(sizeof(struct threadinfo_st));
+	thread new_thread = (thread)malloc(sizeof(thread));
 	//if creation of new thread fails
 	if (!new_thread){
 		return NO_THREAD;	
@@ -128,6 +129,17 @@ tid_t lwp_create(lwpfun function, void *arg){
 	new_thread->state.rsp -= sizeof(unsigned long);
 	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)wrap; 
 
+	//add thread to global list of threads 
+	if(!fullList){
+		fullList = new_thread;
+	}
+	else {
+		thread temp = fullList; 
+		while(temp->lib_one){
+			temp = temp->lib_one; 
+		}
+		temp->lib_one = new_thread;
+	}
 	scheduler current_sched = lwp_get_scheduler(); 
 	if (current_sched){ 
 	//admit to scheduler
@@ -249,7 +261,13 @@ tid_t lwp_wait(int *status) {
 
 }
 
-//tid_t lwp_gettid(void){}
+tid_t lwp_gettid(void){
+	//if there is no current thread
+	if (currThread == NULL){
+		return NO_THREAD;
+	}
+	return currThread->tid;
+}
 
 //thread tid2thread(tid_t tid){}
 
