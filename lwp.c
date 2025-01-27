@@ -116,7 +116,11 @@ tid_t lwp_create(lwpfun function, void *arg){
 
 	//move stack pointer to our base pointer
 	new_thread->state.rsp = new_thread->state.rbp; 
-	
+
+	//ensre that stack frame is 16 byte aligned
+	while (new_thread->state.rsp % 16 != 0){
+		new_thread->state.rsp -= sizeof(unsigned long);
+	}
 	//make space for phony return address			
 	new_thread->state.rsp -= sizeof(unsigned long);
 	
@@ -137,11 +141,14 @@ tid_t lwp_create(lwpfun function, void *arg){
 	new_thread->state.rsp -= sizeof(unsigned long);
 	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)wrap; 
 	
+	/*
+ * 	//I think this was causing an issue becaue it's at the end so it might 
+ *	//not point to the right stuff
 	//ensure that stack frame is 16 byte aligned 
 	if (new_thread->state.rsp % 16 != 0){
 		new_thread->state.rsp -= sizeof(unsigned long); 
 	}
-	
+	*/
 	//add thread to global list of threads 
 	if(!fullList){
 		fullList = new_thread;
