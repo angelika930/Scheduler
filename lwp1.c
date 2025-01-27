@@ -216,9 +216,13 @@ void lwp_exit(int exitval) {
    //Place into terminated thread queue if no
    //threads are waiting
    if (waitingThread == NULL) {
-      
+      //remove from scheduler     
       roundRobin->remove(currThread); 
       struct threadQ *threadStruct = malloc(sizeof(struct threadQ));
+      if (!threadStruct) {
+         perror("malloc failed in lwp_exit");
+         exit(1);
+      }
       threadStruct->myThread = currThread;
       threadStruct->next = NULL;
       //place into queue of thread waiting         
@@ -228,15 +232,13 @@ void lwp_exit(int exitval) {
       else {
          struct threadQ *temp = terminatedThread;
          while (temp->next != NULL) {
+            terminatedThread->myThread->
             temp = temp->next;
          }  
          temp->next = threadStruct;
       }
    } 
-   //ELSE GET FROM WAITING QUEUE
-
    lwp_yield();
-
 }
 
 tid_t lwp_wait(int *status) {
@@ -244,6 +246,10 @@ tid_t lwp_wait(int *status) {
       
       roundRobin->remove(currThread); 
       struct threadQ *threadStruct = malloc(sizeof(struct threadQ));
+      if (!threadStruct) {
+         perror("malloc failed in lwp_exit");
+         exit(1);
+      }
       threadStruct->myThread = currThread;
       threadStruct->next = NULL;
       //place into queue of thread waiting         
