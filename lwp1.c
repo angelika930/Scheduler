@@ -122,7 +122,7 @@ tid_t lwp_create(lwpfun function, void *arg){
 		new_thread->state.rsp -= sizeof(unsigned long);
 	}
 	//placing phony return address at top of stack
-	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)"Angelika Miguel";
+	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)lwp_exit;
 	
 	//decrement stack pointer and place the wrapper function pointer 
 	new_thread->state.rsp -= sizeof(unsigned long);
@@ -159,12 +159,13 @@ void lwp_start(void) {
 	new_thread->state.r13 = 0;
 	new_thread->state.r14 = 0;
 	new_thread->state.r15 = 0;
-	
+	//preserve Floating Point Unit
+	new_thread->state.fxsave=FPU_INIT;
+
 	//settting stack in struct to null, to avoid later delalocation
-	new_thread->stack = NULL;	  
-	//Preserve Floating Point Unit
-	new_thread->state.fxsave=FPU_INIT; 
-	//Admit to the scheduler
+	new_thread->stack = NULL;	   
+	
+	//admit to the scheduler
 	scheduler currentSched = lwp_get_scheduler(); 
 	if (currentSched){
 		currentSched->admit(new_thread);
