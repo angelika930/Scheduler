@@ -342,6 +342,7 @@ void lwp_set_scheduler(scheduler sched) {
    //Reassign global scheduler
    roundRobin = sched;
 }
+
 //return current value of global roundRobin scheduler
 scheduler lwp_get_scheduler(void){
    return roundRobin;
