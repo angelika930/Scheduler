@@ -63,7 +63,7 @@ void wrap (lwpfun f, void *arg){
 	lwp_exit(ret);
 }
 
-//make a thread and create its stack and contents
+//make a thread and create its stack and context
 tid_t lwp_create(lwpfun function, void *arg){
 	thread new_thread = (thread)malloc(sizeof(thread));
 	//if creation of new thread fails
@@ -83,12 +83,12 @@ tid_t lwp_create(lwpfun function, void *arg){
 		exit(EXIT_FAILURE);
 	}
 	
-	//setting up the new thread's stack and context (I think?)
+	//setting up the new thread's stack
 	new_thread->tid = next_tid++;
 	new_thread->stack = stack; 
 	new_thread->stacksize = stack_size;
 
-	//this should move the base pointer to the start of our stack	
+	//this should move the base pointer to the start of our (new) stack
 	new_thread->state.rbp = (unsigned long) ((char*)stack + stack_size);
 	
 	//Preserve Floating Point Unit
@@ -98,7 +98,7 @@ tid_t lwp_create(lwpfun function, void *arg){
 	//load arg for function into rsi 
 	new_thread->state.rsi = (unsigned long)arg; 
 
-	//Zero out all the registers
+	//Zero out all the remaining registers
 	new_thread->state.rax = 0;
 	new_thread->state.rbx = 0;
 	new_thread->state.rcx = 0;
@@ -119,16 +119,28 @@ tid_t lwp_create(lwpfun function, void *arg){
 	//make space for phony return address			
 	new_thread->state.rsp -= sizeof(unsigned long);
 	
+	/*  	
+   	//original placement of this alignment, not sure 
+ 	//we need it here, I think it's only neccessary once we've put everything
+ 	//we are going to use on the stack 
+	//ensure that stack frame is 16 byte aligned
 	if (new_thread->state.rsp % 16 != 0){
 		new_thread->state.rsp -= sizeof(unsigned long);
 	}
+	*/
+
 	//placing phony return address at top of stack
 	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)lwp_exit;
 	
 	//decrement stack pointer and place the wrapper function pointer 
 	new_thread->state.rsp -= sizeof(unsigned long);
 	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)wrap; 
-
+	
+	//ensure that stack frame is 16 byte aligned 
+	if (new_thread->state.rsp % 16 != 0){
+		new_thread->state.rsp -= sizeof(unsigned long); 
+	}
+	
 	//add thread to global list of threads 
 	if(!fullList){
 		fullList = new_thread;
@@ -140,6 +152,8 @@ tid_t lwp_create(lwpfun function, void *arg){
 		}
 		temp->lib_one = new_thread;
 	}
+
+
 	scheduler current_sched = lwp_get_scheduler(); 
 	if (current_sched){ 
 	//admit to scheduler
@@ -151,7 +165,7 @@ tid_t lwp_create(lwpfun function, void *arg){
 }
 
 void lwp_start(void) {
-	thread new_thread = (thread) malloc(sizeof(struct threadinfo_st));
+	thread new_thread = (thread) malloc(sizeof(thread));
 	if (!new_thread) {
 		perror("Malloc failed in lwp_start");
 		return;
@@ -190,9 +204,9 @@ void lwp_start(void) {
 
 void lwp_yield(void){
 	scheduler currSched = lwp_get_scheduler();
-     //DO CHECK IF NULL
+     	//DO CHECK IF NULL
 	thread next_thread = currSched->next;
-   thread old_thread = currThread; 
+	thread old_thread = currThread; 
 	if (next_thread == NULL) {
 		exit(3); //CALL WITH TERMINATION STATUS OF CALLING THREAD
 	}
@@ -203,9 +217,9 @@ void lwp_yield(void){
    
 	else {//swap current thread's registers with next thread's
 		swap_rfiles(&old_thread->state, &next_thread->state);
-		currThread = new_thread;
-      //go to back of scheduler, enables round robin
-      currSched->admit(old_thread);
+		currThread = next_thread;
+      	//go to back of scheduler, enables round robin
+      	currSched->admit(old_thread);
 	}
 }
 
@@ -267,6 +281,9 @@ tid_t lwp_wait(int *status) {
 
 }
 
+//function to get the thread id from our global currentThread structure, this
+//function trusts that yield properly updates the current thread each time that 
+//the context is changed
 tid_t lwp_gettid(void){
 	//if there is no current thread
 	if (currThread == NULL){
@@ -275,7 +292,22 @@ tid_t lwp_gettid(void){
 	return currThread->tid;
 }
 
-//thread tid2thread(tid_t tid){}
+//function to get a thread from the global list of threads if it matches the 
+//provided thread id
+thread tid2thread(tid_t tid){
+	thread temp = fullList;
+	//while there are threads in the list
+	while (temp){
+		//if the temp thread has the correct tid, return it 
+		if (temp->tid == tid){
+			return temp; 
+		}
+		//keep traversing through the list of all threads
+		temp = temp->lib_one; 
+	}
+	//if the tid is invalid, return NULL 
+	return NULL;
+}
 
 void lwp_set_scheduler(scheduler sched) {
    //1). Initialize a new scheduler
