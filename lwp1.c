@@ -205,7 +205,7 @@ void lwp_start(void) {
 void lwp_yield(void){
 	scheduler currSched = lwp_get_scheduler();
      	//DO CHECK IF NULL
-	thread next_thread = currSched->next;
+	thread next_thread = currSched->next();
 	thread old_thread = currThread; 
 	if (next_thread == NULL) {
 		exit(3); //CALL WITH TERMINATION STATUS OF CALLING THREAD
@@ -224,15 +224,16 @@ void lwp_yield(void){
 }
 
 void lwp_exit(int exitval) {
-   //retrieve lower 8 bits
-   int lower_bits = (unsigned int) exitval & BITMASK;
-   currThread->status = lower_bits;
    //Place into terminated thread queue if no
    //threads are waiting
    if (waitingThread == NULL) {
-      
+      //remove from scheduler     
       roundRobin->remove(currThread); 
       struct threadQ *threadStruct = malloc(sizeof(struct threadQ));
+      if (!threadStruct) {
+         perror("malloc failed in lwp_exit");
+         exit(1);
+      }
       threadStruct->myThread = currThread;
       threadStruct->next = NULL;
       //place into queue of thread waiting         
@@ -246,18 +247,24 @@ void lwp_exit(int exitval) {
          }  
          temp->next = threadStruct;
       }
-   } 
-   //ELSE GET FROM WAITING QUEUE
-
+   }
+   currThread->status = MKTERMSTAT(LWP_TERM, exitval);
    lwp_yield();
-
 }
 
 tid_t lwp_wait(int *status) {
+   if (qlen > 1) {
+      return NO_THREAD;
+   }
    if (terminatedThread == NULL) {
-      
+      //"blocks" meaning placed on queue of waiting threads
       roundRobin->remove(currThread); 
+      qlen--;
       struct threadQ *threadStruct = malloc(sizeof(struct threadQ));
+      if (!threadStruct) {
+         perror("malloc failed in lwp_exit");
+         exit(1);
+      }
       threadStruct->myThread = currThread;
       threadStruct->next = NULL;
       //place into queue of thread waiting         
@@ -271,8 +278,28 @@ tid_t lwp_wait(int *status) {
          }  
          temp->next = threadStruct;
       }
+         //RETURN VALUE???
+   }
+   //if terminated threads exist, return the head's tid
+   else if (terminatedThread != NULL) {
+      //remove oldest thread from list of terminated threads
+      thread oldestTerminated = terminatedThread->myThread;
+      terminatedThread = terminatedThread->next; //update head
+      /*This part im unsure because it should take the waiting thread
+ *out from the queue and schedule it back in. but only one queue is ever
+non empty at a time, so does that mean its the current thread that
+called lwp_wait and needs to be rescheduled back in?
+ *
+ */ 
+      //associate exited thread's status code with waiting thread
+      currThread->exited = oldestTerminated;
+      roundRobin->admit(currThread);
+      //it says if status is nonnull, status is polulated wiht termination status
+      if (status != NULL) { //wtf do i do with this
+         currThread->status = LWPTERMSTAT(terminatedThread->myThread->status);
+      }
+      return terminatedThread->myThread->tid;
    } 
-
 }
 
 //function to get the thread id from our global currentThread structure, this
@@ -304,16 +331,12 @@ thread tid2thread(tid_t tid){
 }
 
 void lwp_set_scheduler(scheduler sched) {
-   //1). Initialize a new scheduler
-   sched = malloc(sizeof(struct scheduler));
-   if (sched == NULL) {
-      perror("Malloc failed when setting scheduler");
-      exit(1);
-   }
-   sched = {NULL, NULL, rr_admit, rr_remove, rr_next, rr_qlen};      
+   //1). Initialize a new scheduler ? given our scheduler?
    //2). transfer threads from one scheduler to the next
    thread temp;
-   while (temp = roundRobin->next != NULL) {
+   while (roundRobin != NULL) {
+      temp = roundRobin->next(); 
+      roundRobin->remove(roundRobin->next());
       sched->admit(temp);//admit to new scheduler
    }
    //Reassign global scheduler
