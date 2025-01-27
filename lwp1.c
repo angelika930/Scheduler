@@ -253,7 +253,7 @@ void lwp_exit(int exitval) {
 }
 
 tid_t lwp_wait(int *status) {
-   if (qlen > 1) {
+   if (qlen <= 1) {
       return NO_THREAD;
    }
    if (terminatedThread == NULL) {
