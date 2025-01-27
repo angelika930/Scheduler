@@ -138,7 +138,7 @@ tid_t lwp_create(lwpfun function, void *arg){
 	
 	//ensure that stack frame is 16 byte aligned 
 	if (new_thread->state.rsp % 16 != 0){
-		new_thead->state.rsp -= sizeof(unsigned long); 
+		new_thread->state.rsp -= sizeof(unsigned long); 
 	}
 	
 	//add thread to global list of threads 
@@ -204,9 +204,9 @@ void lwp_start(void) {
 
 void lwp_yield(void){
 	scheduler currSched = lwp_get_scheduler();
-     //DO CHECK IF NULL
+     	//DO CHECK IF NULL
 	thread next_thread = currSched->next;
-   thread old_thread = currThread; 
+	thread old_thread = currThread; 
 	if (next_thread == NULL) {
 		exit(3); //CALL WITH TERMINATION STATUS OF CALLING THREAD
 	}
@@ -217,9 +217,9 @@ void lwp_yield(void){
    
 	else {//swap current thread's registers with next thread's
 		swap_rfiles(&old_thread->state, &next_thread->state);
-		currThread = new_thread;
-      //go to back of scheduler, enables round robin
-      currSched->admit(old_thread);
+		currThread = next_thread;
+      	//go to back of scheduler, enables round robin
+      	currSched->admit(old_thread);
 	}
 }
 
