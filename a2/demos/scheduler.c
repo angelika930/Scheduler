@@ -67,7 +67,6 @@ void rr_remove(thread victim) {
 thread rr_next() {
    if (head != NULL) {
       thread nextThread = head;
-      rr_remove(head);
       return nextThread;
    }
    else {
