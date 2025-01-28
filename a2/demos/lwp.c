@@ -183,17 +183,21 @@ tid_t lwp_create(lwpfun function, void *arg){
 		if (current_sched->admit == NULL){
 			fprintf(stdout, "Hey it's me admit I'm null\n");
 		}
+		fprintf(stderr, "Look I'm about to go into admit\n");
 		current_sched->admit(new_thread);
-		//fprintf(stdout, "Look I got back from admit\n");
+		fprintf(stdout, "Look I got back from admit\n");
 		//keep track of what the current thread is
 		currThread = new_thread; 
+		fprintf(stdout, "Look we're about to leave the if statement\n");
 		
 	}
-
+	fprintf(stdout, "look we're about to leave create\n");
 	return new_thread->tid; 
 }
 
 void lwp_start(void) {
+	//test proof
+	//fprintf(stdout, "Look we're in start!\n");
 	thread new_thread = (thread) malloc(sizeof(thread));
 	if (!new_thread) {
 		perror("Malloc failed in lwp_start");
