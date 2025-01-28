@@ -6,6 +6,7 @@
 #include <sys/mman.h>
 #include <sys/resource.h>
 #include <unistd.h>
+//#include "magic64.S"
 #define BITMASK 0xFF
 static tid_t next_tid = 1;
 extern thread head;
@@ -247,7 +248,7 @@ void lwp_yield(void){
 	} //if there is a current and next thread
    
 	else {//swap current thread's registers with next thread's
-		swap_rfiles(&old_thread->state, &next_thread->state);
+//		swap_rfiles(&old_thread->state, &next_thread->state);
 		currThread = next_thread;
       	//go to back of scheduler, enables round robin
       	currSched->admit(old_thread);
@@ -320,23 +321,20 @@ tid_t lwp_wait(int *status) {
       //remove oldest thread from list of terminated threads
       thread oldestTerminated = terminatedThread->myThread;
       terminatedThread = terminatedThread->next; //update head
-      /*This part im unsure because it should take the waiting thread
- *out from the queue and schedule it back in. but only one queue is ever
-non empty at a time, so does that mean its the current thread that
-called lwp_wait and needs to be rescheduled back in?
- *
- */ 
+      //get tid of oldest terminated thread for return value
+      tid_t terminatedTid = oldestTerminated->tid;
       //associate exited thread's status code with waiting thread
       currThread->exited = oldestTerminated;
       roundRobin->admit(currThread);
       //it says if status is nonnull, status is polulated with term status
-	if (status != NULL) { //wtf do i do with this
-		currThread->status = LWPTERMSTAT(terminatedThread->
+   	if (status != NULL) { 
+	   	currThread->status = LWPTERMSTAT(terminatedThread->
 			myThread->status);
-        }
-	//changed this to oldestTerminated because we alredy moved to pop the 
-	//actual terminated thread off the queue 
-	return oldestTerminated->tid;
+      }
+      //deallocate stack of terminated thread
+      munmap(oldestTerminated->stack,oldestTerminated->stacksize);
+      free(oldestTerminated);
+	   return terminatedTid;
    } 
 }
 
@@ -373,11 +371,16 @@ void lwp_set_scheduler(scheduler sched) {
    //2). transfer threads from one scheduler to the next
    thread temp;
    while (roundRobin != NULL) {
+      printf("fail after here1");
       temp = roundRobin->next(); 
+      printf("fail after here2");
       roundRobin->remove(roundRobin->next());
+      printf("fail after here3");
       sched->admit(temp);//admit to new scheduler
+      printf("fail after here4");
    }
    //Reassign global scheduler
+   printf("fail after here4");
    roundRobin = sched;
 }
 
