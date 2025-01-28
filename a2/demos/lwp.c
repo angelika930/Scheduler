@@ -67,7 +67,7 @@ void wrap (lwpfun f, void *arg){
 
 //make a thread and create its stack and context
 tid_t lwp_create(lwpfun function, void *arg){
-	thread new_thread = (thread)malloc(sizeof(thread));
+	thread new_thread = (thread)malloc(sizeof(struct threadinfo_st));
 	//if creation of new thread fails
 	if (!new_thread){
 		return NO_THREAD;	
@@ -150,6 +150,8 @@ tid_t lwp_create(lwpfun function, void *arg){
 
 	//zero out all the registers not in use for our implementation
 	new_thread->state.rax = 0;
+	printf("%lu\n", new_thread->state.rax);
+	printf("Created thread tid: %lu\n", new_thread->tid);
 	new_thread->state.rbx = 0;
 	new_thread->state.rcx = 0;
 	new_thread->state.rdx = 0;
@@ -198,13 +200,13 @@ tid_t lwp_create(lwpfun function, void *arg){
 void lwp_start(void) {
 	//test proof
 	//fprintf(stdout, "Look we're in start!\n");
-	thread new_thread = (thread) malloc(sizeof(thread));
+	thread new_thread = (thread) malloc(sizeof(struct threadinfo_st));
 	if (!new_thread) {
 		perror("Malloc failed in lwp_start");
 		return;
 	}
 	new_thread->tid = next_tid++;
-   
+   	printf("Started thread tid: %lu\n", new_thread->tid);
 	//Zero out all the registers
 	new_thread->state.rax = 0;
 	new_thread->state.rbx = 0;
@@ -240,7 +242,9 @@ void lwp_yield(void){
 	scheduler currSched = lwp_get_scheduler();
      	//DO CHECK IF NULL
 	thread next_thread = currSched->next();
+	printf("Next thread: %lu\n", next_thread->tid);
 	thread old_thread = currThread; 
+	printf("Old Thread: %lu\n", old_thread->tid);
 	if (next_thread == NULL) {
 		//call with term status of calling thread	
 		exit(currThread->status); 
@@ -251,6 +255,7 @@ void lwp_yield(void){
 	} //if there is a current and next thread
    
 	else {//swap current thread's registers with next thread's
+		printf("%lu\n", next_thread->state.rax);
 		swap_rfiles(&old_thread->state, &next_thread->state);
 		currThread = next_thread;
       	//go to back of scheduler, enables round robin
