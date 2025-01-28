@@ -179,7 +179,6 @@ tid_t lwp_create(lwpfun function, void *arg){
 
 	scheduler current_sched = lwp_get_scheduler(); 
 	if (current_sched){ 
-		//admit to scheduler is segfaulting
 		//admit to scheduler
 		if (current_sched->admit == NULL){
 			//fprintf(stdout, "Hey it's me admit I'm null\n");
