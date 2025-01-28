@@ -6,9 +6,9 @@
 #include <sys/mman.h>
 #include <sys/resource.h>
 #include <unistd.h>
-//#include "magic64.S"
+#include "magic64.S"
 #define BITMASK 0xFF
-static tid_t next_tid = 1;
+tid_t next_tid = 1;
 extern thread head;
 extern thread tail;
 extern int qlen;
@@ -16,7 +16,7 @@ extern scheduler roundRobin;
 extern void swap_rfiles(rfile *old, rfile *new);
 thread currThread;
 thread fullList = NULL;
-
+ 
 struct threadQ {
    thread myThread;
    struct threadQ *next;
@@ -252,7 +252,7 @@ void lwp_yield(void){
 	} //if there is a current and next thread
    
 	else {//swap current thread's registers with next thread's
-//		swap_rfiles(&old_thread->state, &next_thread->state);
+		swap_rfiles(&old_thread->state, &next_thread->state);
 		currThread = next_thread;
       	//go to back of scheduler, enables round robin
       	currSched->admit(old_thread);
