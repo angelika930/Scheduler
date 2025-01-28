@@ -6,7 +6,7 @@
 #include <sys/mman.h>
 #include <sys/resource.h>
 #include <unistd.h>
-#include "magic64.S"
+//#include "magic64.S"
 #define BITMASK 0xFF
 extern thread head;
 extern thread tail;
