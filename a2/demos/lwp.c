@@ -8,7 +8,6 @@
 #include <unistd.h>
 #include "magic64.S"
 #define BITMASK 0xFF
-tid_t next_tid = 1;
 extern thread head;
 extern thread tail;
 extern int qlen;
@@ -16,6 +15,7 @@ extern scheduler roundRobin;
 extern void swap_rfiles(rfile *old, rfile *new);
 thread currThread;
 thread fullList = NULL;
+tid_t next_tid = 1; 
  
 struct threadQ {
    thread myThread;
