@@ -94,37 +94,49 @@ tid_t lwp_create(lwpfun function, void *arg){
 	//using pointer arithmetic
 	new_thread->state.rbp = (unsigned long)(stack + stack_size);
 	
+		
 	//move "into" the new stack space 
 	new_thread->state.rbp -= 1; 
 
 	//clear the last 4 bits for 16-byte alignment
 	new_thread->state.rbp &= ~0xF;
 	
+
 	//move stack pointer to our base pointer
 	new_thread->state.rsp = new_thread->state.rbp; 
 	
+	//make 32 bytes of space for my stack frame
+	new_thread->state.rsp -= sizeof (unsigned long);
+	new_thread->state.rsp -= sizeof (unsigned long);
+	new_thread->state.rsp -= sizeof(unsigned long);
+	new_thread->state.rsp -= sizeof (unsigned long);	
+	//new_thread->state.rsp += (4 * sizeof(unsigned long));	
 	//required for 16 byte alignment of stack pointer
 	//each unsigned long is 8 bytes 
-	new_thread->state.rsp -= sizeof(unsigned long);
+	new_thread->state.rsp += sizeof(unsigned long);
 
 	//make space for phony return address			
-	new_thread->state.rsp -= sizeof(unsigned long);
+	new_thread->state.rsp += sizeof(unsigned long);
 
 	//placing phony return address at top of stack
 	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)lwp_exit;
 
 	//decrement stack pointer for space for wrapper function pointer  
-	new_thread->state.rsp -= sizeof(unsigned long);
+	new_thread->state.rsp += sizeof(unsigned long);
 
 	//place the wrapper function pointer on stack
 	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)wrap;
 
 	//decrement stack pointer to place phony base pointer on it
-	new_thread->state.rsp -= sizeof(unsigned long);
+	new_thread->state.rsp += sizeof(unsigned long);
 
 	//place phony base pointer on stack
 	*((unsigned long *)(new_thread->state.rsp)) = (unsigned long)wrap; 
+	
+	//required for 16 byte alignment
+	//new_thread->state.rsp -= sizeof(unsigned long);
 
+	//16 byte alignment check
   	if (new_thread->state.rsp % 16 != 0){
 		fprintf(stderr, "%d\n", sizeof(unsigned long));
 		fprintf(stderr, "%d\n", (new_thread->state.rsp % 16));
